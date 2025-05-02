@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthorModule } from './author/author.module';
 import { S3Module } from './s3/s3.module';
+import { BookModule } from './book/book.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { S3Module } from './s3/s3.module';
     AuthModule,
     AuthorModule,
     S3Module,
+    BookModule,
   ],
   controllers: [],
   providers: [],

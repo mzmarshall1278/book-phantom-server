@@ -31,7 +31,7 @@ export class AuthorController {
     private readonly s3Service: S3Service,
   ) {}
 
-  @Post()
+  @Post('create')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async becomeAuthor(
@@ -42,7 +42,7 @@ export class AuthorController {
     return this.authorService.createAuthor(user, createAuthorDto);
   }
 
-  @Patch()
+  @Patch('update')
   @UseGuards(JwtAuthGuard)
   async updateAuthor(
     @Req() req: Request,
@@ -75,5 +75,27 @@ export class AuthorController {
     const imageUrl = await this.s3Service.uploadFile(file);
     await this.authorService.updateAuthorProfileImage(user._id, imageUrl);
     return { profileImageUrl: imageUrl };
+  }
+
+  @Post('follow')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async follow(
+    @Req() req: Request,
+    @Body('authorId') authorId: string,
+  ): Promise<void> { 
+    const userId = (req.user as UserDocument)._id.toString();
+    await this.authorService.followAuthor(userId, authorId);
+  }
+
+  @Post('unfollow')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async unfollow(
+    @Req() req: Request,
+    @Body('authorId') authorId: string,
+  ): Promise<void> {
+    const userId = (req.user as UserDocument)._id.toString();
+    await this.authorService.unfollowAuthor(userId, authorId);
   }
 }

@@ -22,11 +22,21 @@ export class Author {
   @Prop()
   profileImageUrl?: string; 
 
+  @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, refPath: 'followerModel' }], default: [] })
+  followers: (User | Author)[];
+
+  @Prop({ type: [String], default: [] })
+  followerModel: ('User' | 'Author')[]; // To specify the model for each follower
+
+  @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Author' }], default: [] })
+  following: Author[];
+
   @Prop({ default: 0 })
   followersCount: number;
 
   @Prop({ default: 0 })
   followingCount: number;
+
 }
 
 export const AuthorSchema = SchemaFactory.createForClass(Author);
