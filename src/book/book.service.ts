@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Book, BookDocument, BookStatus } from './schemas/book.schema';
@@ -6,6 +6,10 @@ import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { AuthorDocument } from '../author/schema/author.schema';
 import { S3Service } from '../s3/s3.service';
+import { LibraryService } from 'src/library/library.service';
+import { UserDocument } from 'src/user/schemas/user.schema';
+import { PayPalService } from 'src/paypal/paypal.service';
+import { TransactionService } from 'src/transaction/transaction.service';
 
 const getId = (obj: Types.ObjectId | { _id?: Types.ObjectId }): string => {
   if (obj instanceof Types.ObjectId) {
@@ -19,9 +23,13 @@ const getId = (obj: Types.ObjectId | { _id?: Types.ObjectId }): string => {
 
 @Injectable()
 export class BookService {
+  private readonly logger = new Logger(BookService.name);
   constructor(
     @InjectModel(Book.name) private readonly bookModel: Model<BookDocument>,
     private readonly s3Service: S3Service,
+    private readonly libraryService: LibraryService,
+    private readonly payPalService: PayPalService,
+    private readonly transactionService: TransactionService,
   ) {}
 
   async createBook(author: AuthorDocument, createBookDto: CreateBookDto): Promise<BookDocument> {
@@ -161,22 +169,107 @@ export class BookService {
     return this.bookModel.find({ authors: authorId, status: BookStatus.PUBLISHED }).populate('authors').exec();
   }
 
-  async findBookByIdForUser(bookId: string, userId: string): Promise<BookDocument> {
-    const book = await this.bookModel.findById(bookId).populate('authors').populate('comments').populate('likes').exec();
+
+   async findBookByIdInUserLibrary(bookId: string, userId: string): Promise<BookDocument> {
+  const book = await this.bookModel.findById(bookId).populate('authors').populate('comments').populate('likes').exec();
+  if (!book) {
+   throw new NotFoundException('Book not found');
+  }
+
+  const hasInLibrary = await this.libraryService.checkIfUserHasBook(userId, bookId);
+
+  if (hasInLibrary) {
+   return book; // User has the book, grant access regardless of status
+  }
+
+  if (book.status !== BookStatus.PUBLISHED) {
+   throw new NotFoundException('Book not found');
+  }
+
+  return book;
+ }
+
+  async purchaseBook(userId: string, bookId: string, req: any): Promise<{ paymentUrl?: string; message?: string }> {
+    const book = await this.bookModel.findById(bookId);
     if (!book) {
       throw new NotFoundException('Book not found');
     }
-    // Logic to check if the user has it in their library or has bought it
-    // This logic would use the userId to query user's library/purchase history
-    if (book.status === BookStatus.ARCHIVED) {
-      // Placeholder: Implement your library/purchase check here
-      // Example: const hasAccess = await this.libraryService.checkOwnership(userId, bookId);
-      // if (hasAccess) return book;
-      return book; // For now, allowing access if archived and found
+
+    if (!book.isPremium) {
+      throw new BadRequestException('This book is free. ');
     }
-    if (book.status !== BookStatus.PUBLISHED) {
+
+    if (book.price <= 0) {
+      await this.libraryService.addBookToLibrary(userId, bookId);
+      return { message: 'This premium book has a price of zero. It has been added to your library.' };
+    }
+
+    const returnUrl = `${req.protocol}://${req.get('host')}/books/purchase/success?bookId=${bookId}`;
+    const cancelUrl = `${req.protocol}://${req.get('host')}/books/purchase/cancel?bookId=${bookId}`;
+
+    const approvalUrl = await this.payPalService.createOrder(book.title, book.price, returnUrl, cancelUrl);
+
+    if (approvalUrl) {
+      return { paymentUrl: approvalUrl };
+    } else {
+      return { message: 'Failed to create PayPal order.' };
+    }
+  }
+
+  async finalizePurchase(userId: string, bookId: string, token: string): Promise<string> {
+    const book = await this.bookModel.findById(bookId);
+    if (!book) {
       throw new NotFoundException('Book not found');
     }
-    return book;
+
+    try {
+      const captureResponse = await this.payPalService.captureOrder(token);
+      if (captureResponse?.result?.status === 'COMPLETED') {
+        this.logger.log(`Payment for book ${bookId} by user ${userId} successful. PayPal Order ID: ${captureResponse.result.id}`);
+        await this.libraryService.addBookToLibrary(userId, bookId);
+        await this.transactionService.createTransaction(
+          userId,
+          bookId,
+          captureResponse.result.id,
+          captureResponse.result.status,
+          book.price, // Assuming book.price is the correct amount
+          captureResponse.result.payer?.payer_id,
+        );
+        return 'Payment successful. Book added to your library.';
+      } else {
+        this.logger.error(`Payment for book ${bookId} by user ${userId} failed. PayPal Response:`, captureResponse);
+        await this.transactionService.createTransaction(
+          userId,
+          bookId,
+          token, // We might not have the order ID yet in a failure
+          captureResponse?.result?.status || 'FAILED',
+          book.price,
+          captureResponse?.result?.payer?.payer_id,
+        );
+        return 'Payment failed.';
+      }
+    } catch (error) {
+      this.logger.error(`Error finalizing payment for book ${bookId} by user ${userId}:`, error);
+      await this.transactionService.createTransaction(
+        userId,
+        bookId,
+        token, // We might not have the order ID yet in an error
+        'ERROR',
+        book.price,
+      );
+      return 'Payment processing error.';
+    }
+  }
+
+
+  async addBookToLibrary(userId: string, bookId: string): Promise<UserDocument> {
+    const book = await this.bookModel.findById(bookId);
+    if (!book) {
+      throw new NotFoundException('Book not found');
+    }
+    if (book.isPremium && book.price > 0) {
+      throw new BadRequestException('This is a premium book. You need to purchase it first.');
+    }
+    return this.libraryService.addBookToLibrary(userId, bookId);
   }
 }

@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { User, UserDocument } from '../user/schemas/user.schema';
 import { Book, BookDocument } from '../book/schemas/book.schema';
+import { AuthorDocument } from 'src/author/schema/author.schema';
 
 const getId = (obj: Types.ObjectId | { _id: Types.ObjectId }): string => {
   if (obj instanceof Types.ObjectId) {
@@ -39,13 +40,27 @@ export class LibraryService {
     return user.save();
   }
 
-  async getUserLibrary(userId: string): Promise<BookDocument[]> {
-    const user = await this.userModel.findById(userId).populate('library').exec();
+  async getUserLibrary(
+    userId: string,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{ items: BookDocument[]; total: number }> {
+    const user = await this.userModel.findById(userId).populate({
+      path: 'library',
+      model: 'Book',
+      options: {
+        skip: (page - 1) * limit,
+        limit: limit,
+      },
+    }).exec();
+
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    // Directly access user.library and assert its type
-    return (user.library as any) as BookDocument[];
+
+    const populatedLibrary = user.library as BookDocument[]; // Explicit cast
+    const total = populatedLibrary.length;
+    return { items: populatedLibrary, total };
   }
 
   async checkIfUserHasBook(userId: string, bookId: string): Promise<boolean> {
@@ -54,5 +69,42 @@ export class LibraryService {
       return false; // Or throw NotFoundException if user existence is assumed
     }
     return user.library.some((userBookId) => userBookId.equals(bookId));
+  }
+
+  async searchUserLibrary(
+    userId: string,
+    searchTerm: string,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{ items: BookDocument[]; total: number }> {
+    const user = await this.userModel.findById(userId).populate({
+      path: 'library',
+      model: 'Book',
+      populate: {
+        path: 'authors',
+        model: 'Author',
+      },
+      options: {
+        skip: (page - 1) * limit,
+        limit: limit,
+      },
+    }).exec();
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const populatedLibrary = user.library as BookDocument[]; // Explicit cast
+    const searchRegex = new RegExp(searchTerm, 'i');
+    const filteredLibrary = populatedLibrary.filter((book: BookDocument) =>
+      searchRegex.test(book.title) ||
+      searchRegex.test(book.description) ||
+      book.authors.some((author: AuthorDocument) => searchRegex.test(author.penName)),
+    );
+
+    const total = filteredLibrary.length;
+    const paginatedResults = filteredLibrary.slice((page - 1) * limit, page * limit);
+
+    return { items: paginatedResults, total };
   }
 }

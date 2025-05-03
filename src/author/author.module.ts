@@ -12,5 +12,6 @@ import { S3Service } from 'src/s3/s3.service';
   imports: [MongooseModule.forFeature([{ name: Author.name, schema: AuthorSchema }]), S3Module, UserModule],
   providers: [AuthorService, S3Service, ],
   controllers: [AuthorController],
+  exports: [AuthorService]
 })
 export class AuthorModule {}

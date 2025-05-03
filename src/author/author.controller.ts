@@ -31,15 +31,10 @@ export class AuthorController {
     private readonly s3Service: S3Service,
   ) {}
 
-  @Post('create')
-  @UseGuards(JwtAuthGuard)
+  @Post('register-author')
   @HttpCode(HttpStatus.CREATED)
-  async becomeAuthor(
-    @Req() req: Request,
-    @Body() createAuthorDto: CreateAuthorDto,
-  ): Promise<AuthorDocument> {
-    const user = req.user as UserDocument;
-    return this.authorService.createAuthor(user, createAuthorDto);
+  async registerAuthor(@Body() createAuthorDto: CreateAuthorDto): Promise<AuthorDocument> {
+    return this.authorService.createAuthor(createAuthorDto);
   }
 
   @Patch('update')

@@ -7,6 +7,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthorModule } from './author/author.module';
 import { S3Module } from './s3/s3.module';
 import { BookModule } from './book/book.module';
+import { LibraryModule } from './library/library.module';
+import { PaypalModule } from './paypal/paypal.module';
+import { TransactionModule } from './transaction/transaction.module';
 
 @Module({
   imports: [
@@ -25,6 +28,9 @@ import { BookModule } from './book/book.module';
     AuthorModule,
     S3Module,
     BookModule,
+    LibraryModule,
+    PaypalModule,
+    TransactionModule,
   ],
   controllers: [],
   providers: [],
