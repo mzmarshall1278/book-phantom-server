@@ -7,14 +7,23 @@ export type AuthorDocument = HydratedDocument<Author>;
 
 @Schema({ timestamps: true })
 export class Author {
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: User.name, required: true })
-  userId: User; // Reference to the User
+  @Prop({ required: true })
+  firstName: string;
+
+  @Prop({ required: true })
+  lastName: string;
 
   @Prop({ required: true, unique: true })
   email: string;
 
   @Prop({ required: true })
   password: string;
+
+  @Prop()
+  googleId?: string;
+
+  @Prop()
+  facebookId?: string;
 
   @Prop({ required: true, unique: true })
   penName: string;
@@ -26,15 +35,21 @@ export class Author {
   city: string;
 
   @Prop()
-  profileImageUrl?: string; 
+  profileImageUrl?: string;
 
-  @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, refPath: 'followerModel' }], default: [] })
+  @Prop({
+    type: [{ type: MongooseSchema.Types.ObjectId, refPath: 'followerModel' }],
+    default: [],
+  })
   followers: (User | Author)[];
 
   @Prop({ type: [String], default: [] })
   followerModel: ('User' | 'Author')[]; // To specify the model for each follower
 
-  @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Author' }], default: [] })
+  @Prop({
+    type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Author' }],
+    default: [],
+  })
   following: Author[];
 
   @Prop({ default: 0 })
@@ -42,7 +57,6 @@ export class Author {
 
   @Prop({ default: 0 })
   followingCount: number;
-
 }
 
 export const AuthorSchema = SchemaFactory.createForClass(Author);

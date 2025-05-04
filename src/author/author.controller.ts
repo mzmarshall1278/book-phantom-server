@@ -33,7 +33,7 @@ export class AuthorController {
 
   @Post('register-author')
   @HttpCode(HttpStatus.CREATED)
-  async registerAuthor(@Body() createAuthorDto: CreateAuthorDto): Promise<AuthorDocument> {
+  async registerAuthor(@Body() createAuthorDto: CreateAuthorDto) {
     return this.authorService.createAuthor(createAuthorDto);
   }
 

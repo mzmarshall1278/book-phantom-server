@@ -6,7 +6,7 @@ import { Author, AuthorDocument } from './schema/author.schema';
 import { CreateAuthorDto } from './dto/create-author.dto';
 import { User, UserDocument } from '../user/schemas/user.schema'; // Import UserDocument
 import { UpdateAuthorDto } from './dto/update-author.dto';
-import * as bcrypt from 'bcrypt';
+import { hash } from 'argon2';
 
 @Injectable()
 export class AuthorService {
@@ -15,24 +15,48 @@ export class AuthorService {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
-  async createAuthor(createAuthorDto: CreateAuthorDto): Promise<AuthorDocument> {
-    const { email, ...rest } = createAuthorDto;
-    const existingAuthor = await this.authorModel.findOne({ email }).exec();
-    if (existingAuthor) {
-      throw new ConflictException('Author with this email already exists');
-    }
+ async createAuthor(createAuthorDto: CreateAuthorDto) {
+     const author = await this.findAuthorByEmail(createAuthorDto.email);
+     if(author) throw new ConflictException('User already exists.')
+     const hashedPassword = await hash(createAuthorDto.password);
+     const createdAuthor = new this.authorModel({ ...createAuthorDto, password: hashedPassword });
+     return createdAuthor.save();
+   }
+ 
+   async findOrCreateGoogleAuthor(profile: any) {
+     const author = await this.authorModel.findOne({ email: profile.email }).exec();
+     if (author) {
+       return author;
+     }
+     const newAuthor = new this.authorModel({
+       googleId: profile.googleid,
+       email: profile.email,
+       firstName: profile.firstName,
+       lastName: profile.lastName,
+     });
+     return newAuthor.save();
+   }
+ 
+   async findOrCreateFacebookAuthor(profile: any) {
+     const user = await this.authorModel.findOne({ facebookId: profile.id }).exec();
+     if (user) {
+       return user;
+     }
+     const newAuthor = new this.authorModel({
+       facebookId: profile.id,
+       email: profile.emails ? profile.emails[0].value : null,
+       firstName: profile.name.givenName,
+       lastName: profile.name.familyName,
+     });
+     return newAuthor.save();
+   }
 
-    const hashedPassword = await bcrypt.hash(createAuthorDto.password, 10);
-    const createdAuthor = new this.authorModel({ ...rest, email, passwordHash: hashedPassword });
-    return createdAuthor.save();
-  }
+  // async findAuthorByUserId(userId: string | Types.ObjectId): Promise<AuthorDocument | null> {
+  //   return this.authorModel.findOne({ userId }).exec();
+  // }
 
-  async findAuthorByUserId(userId: string | Types.ObjectId): Promise<AuthorDocument | null> {
-    return this.authorModel.findOne({ userId }).exec();
-  }
-
-  async updateAuthor(userId: string | Types.ObjectId, updateAuthorDto: UpdateAuthorDto): Promise<AuthorDocument> {
-    const existingAuthor = await this.findAuthorByUserId(userId);
+  async updateAuthor(id: string | Types.ObjectId, updateAuthorDto: UpdateAuthorDto): Promise<AuthorDocument> {
+    const existingAuthor = await this.findAuthorById(id);
     if (!existingAuthor) {
       throw new NotFoundException('Author not found for this user');
     }
@@ -40,8 +64,8 @@ export class AuthorService {
     return existingAuthor.save();
   }
 
-  async updateAuthorProfileImage(userId: string | Types.ObjectId, profileImageUrl: string): Promise<AuthorDocument> {
-    const existingAuthor = await this.findAuthorByUserId(userId);
+  async updateAuthorProfileImage(id: string | Types.ObjectId, profileImageUrl: string): Promise<AuthorDocument> {
+    const existingAuthor = await this.findAuthorById(id);
     if (!existingAuthor) {
       throw new NotFoundException('Author not found for this user');
     }
@@ -55,14 +79,9 @@ export class AuthorService {
     }
 
     const authorToFollow = await this.authorModel.findById(authorId).exec();
-    const user = await this.userModel.findById(userId).exec();
 
     if (!authorToFollow) {
       throw new NotFoundException('Author to follow not found.');
-    }
-
-    if (!user) {
-      throw new NotFoundException('User not found.');
     }
 
     await this.authorModel.findByIdAndUpdate(
@@ -81,7 +100,7 @@ export class AuthorService {
     return this.authorModel.findOne({ email }).exec();
   }
 
-  async findAuthorById(id: string): Promise<AuthorDocument | null> {
+  async findAuthorById(id: string | Types.ObjectId): Promise<AuthorDocument | null> {
     return this.authorModel.findById(id).exec();
   }
 
@@ -91,14 +110,9 @@ export class AuthorService {
     }
 
     const authorToUnfollow = await this.authorModel.findById(authorId).exec();
-    const user = await this.userModel.findById(userId).exec();
 
     if (!authorToUnfollow) {
       throw new NotFoundException('Author to unfollow not found.');
-    }
-
-    if (!user) {
-      throw new NotFoundException('User not found.');
     }
 
     await this.authorModel.findByIdAndUpdate(
