@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsArray, IsBoolean, IsNumber, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString, IsArray, IsBoolean, IsNumber, IsOptional, IsObject } from 'class-validator';
 
 export class CreateBookDto {
   @IsNotEmpty()
@@ -27,6 +27,15 @@ export class CreateBookDto {
   @IsString()
   language: string;
 
+  @IsObject()
+  @IsOptional()
+  dictionary: {
+    characters: { id: string; value: string }[];
+    places: { id: string; value: string }[];
+    spells: { id: string; value: string }[];
+    special: { id: string; value: string }[];
+  };
+
   @IsOptional()
   @IsBoolean()
   isCompleted?: boolean;
@@ -51,7 +60,7 @@ export class CreateBookDto {
   @IsString()
   isbn?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   publishedDate?: string;
 }

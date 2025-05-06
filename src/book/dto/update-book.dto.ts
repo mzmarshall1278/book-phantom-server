@@ -1,4 +1,11 @@
-import { IsOptional, IsString, IsArray, IsBoolean, IsNumber } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsArray,
+  IsBoolean,
+  IsNumber,
+  IsObject,
+} from 'class-validator';
 import { BookStatus } from '../schemas/book.schema';
 
 export class UpdateBookDto {
@@ -27,6 +34,15 @@ export class UpdateBookDto {
   @IsOptional()
   @IsString()
   language?: string;
+
+  @IsObject()
+  @IsOptional()
+  dictionary: {
+    characters: { id: string; value: string }[];
+    places: { id: string; value: string }[];
+    spells: { id: string; value: string }[];
+    special: { id: string; value: string }[];
+  };
 
   @IsOptional()
   status?: BookStatus;

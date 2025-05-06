@@ -4,7 +4,7 @@ import { Model, Types } from 'mongoose';
 import { Book, BookDocument, BookStatus } from './schemas/book.schema';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
-import { AuthorDocument } from '../author/schema/author.schema';
+import { Author, AuthorDocument } from '../author/schema/author.schema';
 import { S3Service } from '../s3/s3.service';
 import { LibraryService } from 'src/library/library.service';
 import { UserDocument } from 'src/user/schemas/user.schema';
@@ -33,7 +33,7 @@ export class BookService {
   ) {}
 
   async createBook(author: AuthorDocument, createBookDto: CreateBookDto): Promise<BookDocument> {
-    const createdBook = new this.bookModel({ ...createBookDto, authors: [author._id] });
+    const createdBook = new this.bookModel({ ...createBookDto, authors: [author.id] });
     return createdBook.save();
   }
 
@@ -42,7 +42,7 @@ export class BookService {
     if (!book) {
       throw new NotFoundException('Book not found');
     }
-    if (!book.authors.some((bookAuthor: AuthorDocument) => getId(bookAuthor._id) === author._id.toString())) {
+    if (!book.authors.some((bookAuthor: AuthorDocument) => getId(bookAuthor) === author.id.toString())) {
       throw new UnauthorizedException('You are not the author of this book');
     }
     Object.assign(book, updateBookDto);
@@ -156,7 +156,6 @@ export class BookService {
     return this.bookModel.countDocuments(query).exec();
   }
 
-
   async findOneBookById(bookId: string): Promise<BookDocument> {
     const book = await this.bookModel.findById(bookId).populate('authors').populate('comments').populate('likes').exec();
     if (!book || book.status !== BookStatus.PUBLISHED) {
@@ -260,7 +259,6 @@ export class BookService {
       return 'Payment processing error.';
     }
   }
-
 
   async addBookToLibrary(userId: string, bookId: string): Promise<UserDocument> {
     const book = await this.bookModel.findById(bookId);

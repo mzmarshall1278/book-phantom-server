@@ -25,8 +25,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Request } from 'express';
 import { AuthorDocument } from '../author/schema/author.schema';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { LibraryService } from 'src/library/library.service';
+import { LibraryService } from '../library/library.service';
 import { BookDocument } from './schemas/book.schema';
+import { AuthorJwtAuthGuard } from '../auth/guards/author-jwt-auth.guard';
 
 @Controller('books')
 export class BookController {
@@ -35,7 +36,7 @@ export class BookController {
   ) {}
 
   @Post('new')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthorJwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async createBook(@Req() req: Request, @Body() createBookDto: CreateBookDto) {
     const author = req.user as AuthorDocument;
@@ -43,7 +44,7 @@ export class BookController {
   }
 
   @Patch(':bookId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthorJwtAuthGuard)
   async editBook(
     @Param('bookId') bookId: string,
     @Req() req: Request,
@@ -54,14 +55,14 @@ export class BookController {
   }
 
   @Post(':bookId/publish')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthorJwtAuthGuard)
   async publishBook(@Param('bookId') bookId: string, @Req() req: Request) {
     const author = req.user as AuthorDocument;
     return this.bookService.publishBook(bookId, author);
   }
 
   @Post(':bookId/cover')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthorJwtAuthGuard)
   @UseInterceptors(FileInterceptor('coverImage'))
   async uploadCoverImage(
     @Param('bookId') bookId: string,
@@ -79,7 +80,7 @@ export class BookController {
   }
 
   @Post(':bookId/banner')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthorJwtAuthGuard)
   @UseInterceptors(FileInterceptor('bannerImage'))
   async uploadBannerImage(
     @Param('bookId') bookId: string,

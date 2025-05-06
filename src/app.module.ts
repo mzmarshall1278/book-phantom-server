@@ -10,6 +10,7 @@ import { BookModule } from './book/book.module';
 import { LibraryModule } from './library/library.module';
 import { PaypalModule } from './paypal/paypal.module';
 import { TransactionModule } from './transaction/transaction.module';
+import { ChapterModule } from './chapter/chapter.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { TransactionModule } from './transaction/transaction.module';
     LibraryModule,
     PaypalModule,
     TransactionModule,
+    ChapterModule,
   ],
   controllers: [],
   providers: [],

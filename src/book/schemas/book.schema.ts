@@ -3,6 +3,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
 import { Author } from '../../author/schema/author.schema';
 import { User } from '../../user/schemas/user.schema';
+import { Chapter } from 'src/chapter/schemas/chapter.schema';
 
 export type BookDocument = HydratedDocument<Book>;
 
@@ -20,6 +21,14 @@ export class Book {
   @Prop({ required: true })
   description: string;
 
+  @Prop({ type: Object })
+  dictionary: {
+    characters: { id: string; value: string }[];
+    places: { id: string; value: string }[];
+    spells: { id: string; value: string }[];
+    special: { id: string; value: string }[];
+  };
+
   @Prop({ required: true })
   synopsis: string;
 
@@ -32,8 +41,17 @@ export class Book {
   @Prop({ required: true })
   language: string;
 
-  @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Author' }], required: true })
+  @Prop({
+    type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Author' }],
+    required: true,
+  })
   authors: Author[];
+
+  @Prop({
+    type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Chapter' }],
+    required: true,
+  })
+  chapters: Chapter[];
 
   @Prop({ type: String, enum: BookStatus, default: BookStatus.DRAFT })
   status: BookStatus;
@@ -56,13 +74,19 @@ export class Book {
   @Prop({ type: Number, default: 0 })
   ratings: number; // Could be an average or a count, adjust as needed
 
-  @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'User' }], default: [] })
+  @Prop({
+    type: [{ type: MongooseSchema.Types.ObjectId, ref: 'User' }],
+    default: [],
+  })
   comments: User[]; // Reference to user who commented
 
   @Prop({ type: String })
   ageRating: string;
 
-  @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'User' }], default: [] })
+  @Prop({
+    type: [{ type: MongooseSchema.Types.ObjectId, ref: 'User' }],
+    default: [],
+  })
   likes: User[];
 
   @Prop({ type: String })
@@ -73,6 +97,9 @@ export class Book {
 
   @Prop({ type: String })
   publishedDate: string;
+
+  @Prop({ type: Boolean, default: false })
+  isPublished: boolean;
 
   @Prop({ type: String })
   coverImageUrl: string;

@@ -13,5 +13,6 @@ import { TransactionModule } from 'src/transaction/transaction.module';
   imports: [MongooseModule.forFeature([{ name: Book.name, schema: BookSchema }]), AuthorModule, LibraryModule, PaypalModule, TransactionModule],
   controllers: [BookController],
   providers: [BookService, S3Service],
+  exports: [BookService, MongooseModule],
 })
 export class BookModule {}
