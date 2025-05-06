@@ -12,6 +12,7 @@ export class AuthController {
 
   
   @UseGuards(LocalAuthGuard)
+  @Post('login')
   async login(@Req() req: any): Promise<{ accessToken: string }> {
     return this.authService.login(req.user); // req.user will be populated by LocalStrategy on successful validation
   }

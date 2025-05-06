@@ -17,12 +17,13 @@ import {
 import { AuthorService } from './author.service';
 import { CreateAuthorDto } from './dto/create-author.dto';
 import { UpdateAuthorDto } from './dto/update-author.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AuthorJwtAuthGuard } from '../auth/guards/author-jwt-auth.guard';
 import { Request } from 'express';
 import { UserDocument } from '../user/schemas/user.schema';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { S3Service } from '../s3/s3.service';
 import { AuthorDocument } from './schema/author.schema';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
 @Controller('authors')
 export class AuthorController {
@@ -38,7 +39,7 @@ export class AuthorController {
   }
 
   @Patch('update')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthorJwtAuthGuard)
   async updateAuthor(
     @Req() req: Request,
     @Body() updateAuthorDto: UpdateAuthorDto,
@@ -48,7 +49,7 @@ export class AuthorController {
   }
 
   @Post('upload-profile-image')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthorJwtAuthGuard)
   @UseInterceptors(FileInterceptor('profileImage')) // 'profileImage' is the field name in the form-data
   async uploadProfileImage(
     @Req() req: Request,
@@ -79,7 +80,7 @@ export class AuthorController {
     @Req() req: Request,
     @Body('authorId') authorId: string,
   ): Promise<void> { 
-    const userId = (req.user as UserDocument)._id.toString();
+    const userId = (req.user as UserDocument).id.toString();
     await this.authorService.followAuthor(userId, authorId);
   }
 
@@ -90,7 +91,7 @@ export class AuthorController {
     @Req() req: Request,
     @Body('authorId') authorId: string,
   ): Promise<void> {
-    const userId = (req.user as UserDocument)._id.toString();
+    const userId = (req.user as UserDocument).id.toString();
     await this.authorService.unfollowAuthor(userId, authorId);
   }
 }

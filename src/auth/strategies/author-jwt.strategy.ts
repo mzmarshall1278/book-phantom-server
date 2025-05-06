@@ -10,9 +10,9 @@ export class AuthorJwtStrategy extends PassportStrategy(Strategy, 'author-jwt') 
     private readonly configService: ConfigService,
     private readonly authorAuthService: AuthorAuthService,
   ) {
-    const jwtSecret = configService.get<string>('AUTHOR_JWT_SECRET');
+    const jwtSecret = configService.get<string>('JWT_SECRET');
     if (!jwtSecret) {
-      throw new Error('JWT_SECRET_AUTHOR environment variable is not defined!');
+      throw new Error('JWT_SECRET environment variable is not defined!');
     }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),

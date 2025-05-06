@@ -75,13 +75,13 @@ export class AuthorService {
 
   async followAuthor(userId: string, authorId: string): Promise<void> {
     if (userId === authorId) {
-      throw new BadRequestException('Users cannot follow themselves.');
+      throw new BadRequestException('You know you cant do that right?');
     }
 
     const authorToFollow = await this.authorModel.findById(authorId).exec();
 
     if (!authorToFollow) {
-      throw new NotFoundException('Author to follow not found.');
+      throw new NotFoundException('You know you cant do that right?');
     }
 
     await this.authorModel.findByIdAndUpdate(

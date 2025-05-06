@@ -5,12 +5,14 @@ import { LoginAuthDto } from './dto/login-auth.dto';
 import { JwtService } from '@nestjs/jwt';
 import { verify } from 'argon2';
 import { UserDocument } from 'src/user/schemas/user.schema';
+import { AuthorService } from 'src/author/author.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    private readonly authorService: AuthorService
   ) {}
 
   async validateUser(loginAuthDto: LoginAuthDto): Promise<any> {
@@ -32,12 +34,13 @@ export class AuthService {
     return {
       id: user.id,
       email: user.email,
+      role: 'user',
       accessToken
     }
   }
 
   async generateTokens(user) {
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, email: user.email, role: 'user' };
 
     const [ accessToken ] = await Promise.all([
       this.jwtService.signAsync(payload),
@@ -46,11 +49,24 @@ export class AuthService {
     return { accessToken }
   }
 
-  async validateJWTUser (user) {
-    const foundUser = await this.userService.findOneById(user.id);
-    if(!foundUser) return new UnauthorizedException("User not found!");
-    const currentUser = { id: foundUser.id, email: foundUser.email }; 
-    return currentUser;
+  async validateJWTUser(payload: any) {
+    const { sub, role } = payload;
+
+    if (role === 'user') {
+      const foundUser = await this.userService.findOneById(sub);
+      if (!foundUser) {
+        throw new UnauthorizedException('User not found!');
+      }
+      return { id: foundUser.id, email: foundUser.email, role: 'user' };
+    } else if (role === 'author') {
+      const foundAuthor = await this.authorService.findAuthorById(sub);
+      if (!foundAuthor) {
+        throw new UnauthorizedException('Author not found!');
+      }
+      return { id: foundAuthor.id, email: foundAuthor.email, role: 'author' };
+    } else {
+      throw new UnauthorizedException('Invalid user role!');
+    }
   }
 
   async googleLogin(user: any) {

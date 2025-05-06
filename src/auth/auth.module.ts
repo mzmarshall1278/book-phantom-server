@@ -9,12 +9,20 @@ import { FacebookStrategy } from './strategies/facebook.strategy';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { LocalStrategy } from './strategies/local.strategy';
+import { AuthorAuthService } from './author-auth.service';
+import { GoogleAuthorStrategy } from './strategies/google-author.strategy';
+import { AuthorJwtStrategy } from './strategies/author-jwt.strategy';
+import { AuthorLocalStrategy } from './strategies/author-local.strategy';
+import { AuthorModule } from 'src/author/author.module';
+import { AuthorAuthController } from './author-auth.controller';
 
 @Module({
   imports: [
     UserModule,
+    AuthorModule,
     PassportModule,
-    JwtModule.registerAsync({
+    JwtModule.registerAsync({ // Configuration for regular user JWT
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
@@ -23,8 +31,18 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, GoogleStrategy, FacebookStrategy, JwtStrategy], // Make sure JwtStrategy is here
-  controllers: [AuthController],
+  providers: [
+    AuthService,
+    GoogleStrategy,
+    FacebookStrategy,
+    JwtStrategy,
+    LocalStrategy,
+    AuthorAuthService,
+    GoogleAuthorStrategy,
+    AuthorJwtStrategy,
+    AuthorLocalStrategy,
+  ], // Make sure JwtStrategy is here
+  controllers: [AuthController, AuthorAuthController],
   exports: [],
 })
 export class AuthModule {}

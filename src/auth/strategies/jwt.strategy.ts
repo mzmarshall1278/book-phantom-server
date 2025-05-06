@@ -1,5 +1,9 @@
 // src/auth/strategies/jwt.strategy.ts
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
@@ -23,6 +27,18 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: any) {
-    return this.authService.validateJWTUser(payload.sub);
+    try {
+      return this.authService.validateJWTUser({
+        sub: payload.sub,
+        role: payload.role,
+      });
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error; // Re-throw the UnauthorizedException
+      }
+      // Handle other potential errors here (e.g., database issues)
+      console.error('Error validating JWT user:', error);
+      throw new InternalServerErrorException('Internal server error');
+    }
   }
 }
