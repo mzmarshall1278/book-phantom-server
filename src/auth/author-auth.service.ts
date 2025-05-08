@@ -1,16 +1,19 @@
 // src/auth/auth.service.ts
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { JwtService } from '@nestjs/jwt';
 import { verify } from 'argon2';
 import { AuthorService } from 'src/author/author.service';
 import { AuthorDocument } from 'src/author/schema/author.schema';
+import { v4 as uuidv4 } from 'uuid';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class AuthorAuthService {
   constructor(
     private readonly authorService: AuthorService,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
   ) {}
 
   async validateAuthor(loginAuthDto: LoginAuthDto): Promise<any> {
@@ -61,4 +64,43 @@ export class AuthorAuthService {
   async facebookLogin(author: any) {
     return this.login(author);
   }
+
+  async resendConfirmationEmail(email: string): Promise<void> {
+      const user = await this.authorService.findAuthorByEmail(email);
+  
+      if (!user) {
+        throw new NotFoundException('User not found.');
+      }
+  
+      if (user.isEmailConfirmed) {
+        throw new UnauthorizedException('Email already confirmed.');
+      }
+      // Generate new token and expiration
+      const newConfirmationToken = uuidv4();
+      const newExpiration = new Date();
+      newExpiration.setDate(newExpiration.getDate() + 1);
+  
+      // Update user with new token
+      await this.authorService.updateConfirmationToken(
+        user.id,
+        newConfirmationToken,
+        newExpiration,
+      );
+      // Send email
+      await this.mailService.sendUserConfirmation(user, 'author');
+    }
+
+    async confirmEmail(token: string, userId: string): Promise<void> {
+      const user = await this.authorService.findAuthorById(userId);
+      if (user) {
+        if (user.emailConfirmationToken !== token) {
+          throw new UnauthorizedException('Invalid confirmation token.');
+        }
+  
+        if (user.emailConfirmationTokenExpiresAt < new Date()) {
+          throw new UnauthorizedException('Confirmation token has expired.');
+        }
+        await this.authorService.markEmailAsConfirmed(userId);
+      }
+    }
 }

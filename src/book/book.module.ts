@@ -8,9 +8,20 @@ import { AuthorModule } from '../author/author.module'; // Import AuthorModule t
 import { LibraryModule } from 'src/library/library.module';
 import { PaypalModule } from 'src/paypal/paypal.module';
 import { TransactionModule } from 'src/transaction/transaction.module';
+import { Chapter, ChapterSchema } from 'src/chapter/schemas/chapter.schema';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: Book.name, schema: BookSchema }]), AuthorModule, LibraryModule, PaypalModule, TransactionModule],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Book.name, schema: BookSchema }, 
+      { name: Chapter.name, schema: ChapterSchema
+       }, 
+    ]),
+    AuthorModule,
+    LibraryModule,
+    PaypalModule,
+    TransactionModule,
+  ],
   controllers: [BookController],
   providers: [BookService, S3Service],
   exports: [BookService, MongooseModule],

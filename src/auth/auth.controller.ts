@@ -1,16 +1,30 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get, Req, UnauthorizedException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  Get,
+  Req,
+  UnauthorizedException,
+  Query,
+  BadRequestException,
+  Res,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginAuthDto } from './dto/login-auth.dto';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
-import { FacebookAuthGuard } from './guards/facebook-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
-  
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(@Req() req: any): Promise<{ accessToken: string }> {
@@ -27,7 +41,16 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   async googleAuthRedirect(@Req() req: any, res: Response) {
     const response = await this.authService.googleLogin(req.user);
-    res.redirect("frontend app server/api/auth/google/callback?userId="+response.id+"&email="+response.email+"&accessToken="+response.accessToken)
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+    res.redirect(
+      frontendUrl +
+        '/api/auth/google/callback?userId=' +
+        response.id +
+        '&email=' +
+        response.email +
+        '&accessToken=' +
+        response.accessToken,
+    );
   }
 
   // @Get('facebook')
@@ -41,4 +64,52 @@ export class AuthController {
   // async facebookAuthRedirect(@Req() req: any): Promise<{ accessToken: string }> {
   //   return this.authService.facebookLogin(req.user);
   // }
+
+  @Get('confirm') //  route for email confirmation
+  async confirmEmail(
+    @Query('token') token: string,
+    @Query('userId') userId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    if (!token || !userId) {
+      throw new BadRequestException('Token and User ID are required.');
+    }
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+    try {
+      await this.authService.confirmEmail(token, userId);
+      // Redirect to a success page on your frontend
+      res.redirect(`your-frontend-app/email-confirmed`); // Adjust the URL as needed
+    } catch (error) {
+      if (error instanceof UnauthorizedException)
+        res.redirect(
+          `${frontendUrl}/email-confirmation-failed?message=${error.message}`,
+        );
+      else
+        res.redirect(
+          `${frontendUrl}/email-confirmation-failed?message=An error occurred`,
+        );
+    }
+  }
+
+  @Post('resend-confirmation-email')
+  async resendConfirmationEmail(
+    @Body('email') email: string,
+    @Res() res: Response,
+  ) {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+    try {
+      await this.authService.resendConfirmationEmail(email);
+      res.status(HttpStatus.OK).send({ message: 'Confirmation email sent.' });
+    } catch (error) {
+      if (error instanceof UnauthorizedException)
+        res.redirect(
+          `${frontendUrl}/email-confirmation-failed?message=${error.message}`,
+        );
+      else
+        res.redirect(
+          `${frontendUrl}/email-confirmation-failed?message=An error occurred`,
+        );
+    }
+  }
+
 }

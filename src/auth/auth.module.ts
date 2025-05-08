@@ -16,6 +16,7 @@ import { AuthorJwtStrategy } from './strategies/author-jwt.strategy';
 import { AuthorLocalStrategy } from './strategies/author-local.strategy';
 import { AuthorModule } from 'src/author/author.module';
 import { AuthorAuthController } from './author-auth.controller';
+import { MailModule } from 'src/mail/mail.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { AuthorAuthController } from './author-auth.controller';
       }),
       inject: [ConfigService],
     }),
+    MailModule
   ],
   providers: [
     AuthService,

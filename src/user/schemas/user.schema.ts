@@ -23,6 +23,15 @@ export class User {
   @Prop()
   password?: string;
 
+  @Prop({ default: false })
+  isEmailConfirmed: boolean;
+
+  @Prop()
+  emailConfirmationToken: string;
+
+  @Prop()
+  emailConfirmationTokenExpiresAt: Date;
+
   @Prop()
   googleId?: string;
 

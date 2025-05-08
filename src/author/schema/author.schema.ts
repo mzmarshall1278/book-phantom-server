@@ -19,6 +19,15 @@ export class Author {
   @Prop({ required: true })
   password: string;
 
+  @Prop({ default: false })
+  isEmailConfirmed: boolean;
+
+  @Prop()
+  emailConfirmationToken: string;
+
+  @Prop()
+  emailConfirmationTokenExpiresAt: Date;
+
   @Prop()
   googleId?: string;
 

@@ -45,16 +45,7 @@ export class ChapterService {
       );
     }
 
-    if (
-      !book.authors.some(
-        (bookAuthor: AuthorDocument) =>
-          getId(bookAuthor) === authorId.toString(),
-      )
-    ) {
-      throw new UnauthorizedException(
-        `You are not authorized to access this book"${createChapterDto.bookId}".`,
-      );
-    }
+    this.isBookAuthor(book, authorId);
 
     const processedContent =
       this.chapterProcessingService.processChapterContent(
@@ -134,21 +125,31 @@ export class ChapterService {
     }
   }
 
-  async findAllByBookId(bookId: string): Promise<Chapter[]> {
-    return this.chapterModel.find({ bookId }).exec();
-  }
-
-  async preview(createChapterDto: CreateChapterDto): Promise<any> {
-    const book = await this.bookModel.findById(createChapterDto.bookId).exec();
-    if (!book || !book.dictionary) {
-      throw new NotFoundException(
-        `Book with ID "${createChapterDto.bookId}" or its dictionary not found for preview.`,
+  isBookAuthor (book, authorId) {
+    if (
+      !book.authors.some(
+        (bookAuthor: AuthorDocument) =>
+          getId(bookAuthor) === authorId.toString(),
+      )
+    ) {
+      throw new UnauthorizedException(
+        `You are not authorized to access this book"${book.id}".`,
       );
     }
-    return this.chapterProcessingService.processChapterContent(
-      createChapterDto.chapterText,
-      createChapterDto.chapterTitle,
-      book.dictionary,
-    );
   }
+
+
+  // async preview(createChapterDto: CreateChapterDto): Promise<any> {
+  //   const book = await this.bookModel.findById(createChapterDto.bookId).exec();
+  //   if (!book || !book.dictionary) {
+  //     throw new NotFoundException(
+  //       `Book with ID "${createChapterDto.bookId}" or its dictionary not found for preview.`,
+  //     );
+  //   }
+  //   return this.chapterProcessingService.processChapterContent(
+  //     createChapterDto.chapterText,
+  //     createChapterDto.chapterTitle,
+  //     book.dictionary,
+  //   );
+  // }
 }

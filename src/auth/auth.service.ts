@@ -1,18 +1,21 @@
 // src/auth/auth.service.ts
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { JwtService } from '@nestjs/jwt';
 import { verify } from 'argon2';
 import { UserDocument } from 'src/user/schemas/user.schema';
 import { AuthorService } from 'src/author/author.service';
+import { v4 as uuidv4 } from 'uuid';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
-    private readonly authorService: AuthorService
+    private readonly authorService: AuthorService,
+    private readonly mailService: MailService
   ) {}
 
   async validateUser(loginAuthDto: LoginAuthDto): Promise<any> {
@@ -26,6 +29,9 @@ export class AuthService {
     if (!isPasswordMatch)
       throw new UnauthorizedException('Invalid credentials');
 
+    if (!user.isEmailConfirmed)
+      throw new UnauthorizedException('Please verify your email to continue');
+
     return { id: user._id, name: user.email };
   }
 
@@ -35,18 +41,18 @@ export class AuthService {
       id: user.id,
       email: user.email,
       role: 'user',
-      accessToken
-    }
+      accessToken,
+    };
   }
 
   async generateTokens(user) {
     const payload = { sub: user.id, email: user.email, role: 'user' };
 
-    const [ accessToken ] = await Promise.all([
+    const [accessToken] = await Promise.all([
       this.jwtService.signAsync(payload),
     ]);
 
-    return { accessToken }
+    return { accessToken };
   }
 
   async validateJWTUser(payload: any) {
@@ -75,5 +81,44 @@ export class AuthService {
 
   async facebookLogin(user: any) {
     return this.login(user);
+  }
+
+  async confirmEmail(token: string, userId: string): Promise<void> {
+    const user = await this.userService.findOneById(userId);
+    if (user) {
+      if (user.emailConfirmationToken !== token) {
+        throw new UnauthorizedException('Invalid confirmation token.');
+      }
+
+      if (user.emailConfirmationTokenExpiresAt < new Date()) {
+        throw new UnauthorizedException('Confirmation token has expired.');
+      }
+      await this.userService.markEmailAsConfirmed(userId);
+    }
+  }
+
+  async resendConfirmationEmail(email: string): Promise<void> {
+    const user = await this.userService.findOneByEmail(email);
+
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+
+    if (user.isEmailConfirmed) {
+      throw new UnauthorizedException('Email already confirmed.');
+    }
+    // Generate new token and expiration
+    const newConfirmationToken = uuidv4();
+    const newExpiration = new Date();
+    newExpiration.setDate(newExpiration.getDate() + 1);
+
+    // Update user with new token
+    await this.userService.updateConfirmationToken(
+      user.id,
+      newConfirmationToken,
+      newExpiration,
+    );
+    // Send email
+    await this.mailService.sendUserConfirmation(user, 'user');
   }
 }
