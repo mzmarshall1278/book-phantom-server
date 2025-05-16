@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { MailerService } from '@nestjs-modules/mailer';
 import { UserDocument } from '../user/schemas/user.schema';
 import { ConfigService } from '@nestjs/config';
@@ -18,7 +18,8 @@ export class MailService {
       confirmationLink = `${frontendUrl}/auth/author/confirm?token=${user.emailConfirmationToken}&userId=${user._id}`;
     }
 
-    await this.mailerService.sendMail({
+    try {
+      const emailRes = await this.mailerService.sendMail({
       to: user.email,
       subject: 'Confirm Your Email Address',
       template: 'confirmation', // You'll need to create this template
@@ -28,6 +29,12 @@ export class MailService {
         url: confirmationLink,
       },
     });
+    console.log(emailRes);
+    return emailRes;
+    } catch (error) {
+      console.log('**************',error);
+      throw new InternalServerErrorException('Unable to send mail.')
+    }
   }
 
     async sendResetPasswordEmail(user: UserDocument | AuthorDocument, token: string, role: 'user' | 'author'): Promise<void> {

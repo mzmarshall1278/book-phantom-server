@@ -11,6 +11,7 @@ import {
   Res,
   Query,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { AuthorAuthService } from './author-auth.service';
 import { GoogleAuthorAuthGuard } from './guards/google-author-auth.guard';
@@ -69,41 +70,33 @@ export class AuthorAuthController {
     if (!token || !userId) {
       throw new BadRequestException('Token and User ID are required.');
     }
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     try {
       await this.authorAuthService.confirmEmail(token, userId);
-      // Redirect to a success page on your frontend
-      res.redirect(`your-frontend-app/email-confirmed`); // Adjust the URL as needed
+      res.status(HttpStatus.OK).json({ message: 'Email confirmed.' });
     } catch (error) {
-      if (error instanceof UnauthorizedException)
-        res.redirect(
-          `${frontendUrl}/email-confirmation-failed?message=${error.message}`,
-        );
-      else
-        res.redirect(
-          `${frontendUrl}/email-confirmation-failed?message=An error occurred`,
-        );
+      if (error instanceof UnauthorizedException) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ message: error.message });
+      } else if (error instanceof NotFoundException) {
+        res.status(HttpStatus.NOT_FOUND).json({ message: error.message });
+      } else {
+        res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: 'An error occurred' });
+      }
     }
   }
 
-  @Post('resend-confirmation-email')
-  async resendConfirmationEmail(
-    @Body('email') email: string,
-    @Res() res: Response,
-  ) {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+ @Post('resend-confirmation-email')
+  async resendConfirmationEmail(@Body('email') email: string, @Res() res: Response) {
     try {
       await this.authorAuthService.resendConfirmationEmail(email);
-      res.status(HttpStatus.OK).send({ message: 'Confirmation email sent.' });
+      res.status(HttpStatus.OK).json({ message: 'Confirmation email sent.' });
     } catch (error) {
-      if (error instanceof UnauthorizedException)
-        res.redirect(
-          `${frontendUrl}/email-confirmation-failed?message=${error.message}`,
-        );
-      else
-        res.redirect(
-          `${frontendUrl}/email-confirmation-failed?message=An error occurred`,
-        );
+      if (error instanceof UnauthorizedException) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ message: error.message });
+      } else if (error instanceof NotFoundException) {
+        res.status(HttpStatus.NOT_FOUND).json({ message: error.message });
+      } else {
+        res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: 'An error occurred' });
+      }
     }
   }
 }

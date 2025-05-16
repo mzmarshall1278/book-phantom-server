@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Body,
-  HttpCode,
   HttpStatus,
   UseGuards,
   Get,
@@ -11,6 +10,7 @@ import {
   Query,
   BadRequestException,
   Res,
+  NotFoundException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
@@ -77,17 +77,17 @@ export class AuthController {
     const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     try {
       await this.authService.confirmEmail(token, userId);
-      // Redirect to a success page on your frontend
-      res.redirect(`your-frontend-app/email-confirmed`); // Adjust the URL as needed
+      res.status(HttpStatus.OK).json({ message: 'Email confirmed!' });
     } catch (error) {
-      if (error instanceof UnauthorizedException)
-        res.redirect(
-          `${frontendUrl}/email-confirmation-failed?message=${error.message}`,
-        );
-      else
-        res.redirect(
-          `${frontendUrl}/email-confirmation-failed?message=An error occurred`,
-        );
+      if (error instanceof UnauthorizedException) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ message: error.message });
+      } else if (error instanceof NotFoundException) {
+        res.status(HttpStatus.NOT_FOUND).json({ message: error.message });
+      } else {
+        res
+          .status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .json({ message: 'An error occurred' });
+      }
     }
   }
 
@@ -96,20 +96,19 @@ export class AuthController {
     @Body('email') email: string,
     @Res() res: Response,
   ) {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     try {
       await this.authService.resendConfirmationEmail(email);
       res.status(HttpStatus.OK).send({ message: 'Confirmation email sent.' });
     } catch (error) {
-      if (error instanceof UnauthorizedException)
-        res.redirect(
-          `${frontendUrl}/email-confirmation-failed?message=${error.message}`,
-        );
-      else
-        res.redirect(
-          `${frontendUrl}/email-confirmation-failed?message=An error occurred`,
-        );
+      if (error instanceof UnauthorizedException) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ message: error.message });
+      } else if (error instanceof NotFoundException) {
+        res.status(HttpStatus.NOT_FOUND).json({ message: error.message });
+      } else {
+        res
+          .status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .json({ message: 'An error occurred' });
+      }
     }
   }
-
 }

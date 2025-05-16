@@ -4,7 +4,8 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigService } from '@nestjs/config';
 import { MailService } from './mail.service';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
-import * as path from 'path';
+import { join } from 'path';
+
 
 @Module({
   imports: [
@@ -22,11 +23,11 @@ import * as path from 'path';
         defaults: {
           from: {
             email: configService.get('MAIL_FROM'),
-            name: configService.get('MAIL_FROM_NAME') || 'MyApp', // Provide a default if needed
+            name: configService.get('MAIL_FROM_NAME') || 'Book Phantom', // Provide a default if needed
           },
         },
         template: {
-          dir: path.resolve(__dirname, 'templates'), // Path to your email templates
+          dir: join(__dirname, 'templates'), // Path to your email templates
           adapter: new HandlebarsAdapter(), // Use Handlebars adapter
           options: {
             strict: true, // Handlebar options
