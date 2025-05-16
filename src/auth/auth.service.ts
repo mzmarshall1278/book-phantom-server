@@ -32,7 +32,7 @@ export class AuthService {
     if (!user.isEmailConfirmed)
       throw new UnauthorizedException('Please verify your email to continue');
 
-    return { id: user._id, name: user.email };
+    return { id: user._id, email: user.email, name: user.firstName+' '+user.lastName };
   }
 
   async login(user) {
@@ -40,14 +40,14 @@ export class AuthService {
     return {
       id: user.id,
       email: user.email,
+      name: user.name,
       role: 'user',
       accessToken,
     };
   }
 
   async generateTokens(user) {
-    const payload = { sub: user.id, email: user.email, role: 'user' };
-
+    const payload = { sub: user.id, email: user.email, name: user.name, role: 'user' };
     const [accessToken] = await Promise.all([
       this.jwtService.signAsync(payload),
     ]);
@@ -56,23 +56,23 @@ export class AuthService {
   }
 
   async validateJWTUser(payload: any) {
-    const { sub, role } = payload;
+    const { sub } = payload;
 
-    if (role === 'user') {
+    // if (role === 'user') {
       const foundUser = await this.userService.findOneById(sub);
       if (!foundUser) {
         throw new UnauthorizedException('User not found!');
       }
       return { id: foundUser.id, email: foundUser.email, role: 'user' };
-    } else if (role === 'author') {
-      const foundAuthor = await this.authorService.findAuthorById(sub);
-      if (!foundAuthor) {
-        throw new UnauthorizedException('Author not found!');
-      }
-      return { id: foundAuthor.id, email: foundAuthor.email, role: 'author' };
-    } else {
-      throw new UnauthorizedException('Invalid user role!');
-    }
+    // } else if (role === 'author') {
+    //   const foundAuthor = await this.authorService.findAuthorById(sub);
+    //   if (!foundAuthor) {
+    //     throw new UnauthorizedException('Author not found!');
+    //   }
+    //   return { id: foundAuthor.id, email: foundAuthor.email, role: 'author' };
+    // } else {
+    //   throw new UnauthorizedException('Invalid user role!');
+    // }
   }
 
   async googleLogin(user: any) {

@@ -32,8 +32,14 @@ export class AuthorAuthService {
 
     if (!isPasswordMatch)
       throw new UnauthorizedException('Invalid credentials');
+    if (!author.isEmailConfirmed)
+      throw new UnauthorizedException('Please verify your email to continue');
 
-    return { id: author._id, name: author.email };
+    return {
+      id: author._id,
+      email: author.email,
+      name: author.firstName + ' ' + author.lastName,
+    };
   }
 
   async login(author) {
@@ -42,12 +48,18 @@ export class AuthorAuthService {
       id: author.id,
       email: author.email,
       accessToken,
+      name: author.name,
       role: 'author',
     };
   }
 
   async generateTokens(author) {
-    const payload = { sub: author.id, email: author.email, role: 'author' };
+    const payload = {
+      sub: author.id,
+      email: author.email,
+      name: author.name,
+      role: 'author',
+    };
 
     const [accessToken] = await Promise.all([
       this.jwtService.signAsync(payload),
@@ -59,8 +71,6 @@ export class AuthorAuthService {
   async validateJWTAuthor(author) {
     const foundUser = await this.authorService.findAuthorById(author);
     if (!foundUser) throw new UnauthorizedException('User not found!');
-    if (!foundUser.isEmailConfirmed)
-      throw new UnauthorizedException('Please verify your email to continue');
     const currentUser = { id: foundUser.id, email: foundUser.email };
     return currentUser;
   }
